@@ -11,10 +11,13 @@ from __future__ import print_function
 import numpy as np
 import torch 
 import matplotlib.pyplot as plt
+import samplers as samplers
+from discriminator import Discriminator
+import os
 
 # plot p0 and p1
 plt.figure()
-
+torch.manual_seed(1111)
 # empirical
 xx = torch.randn(10000)
 f = lambda x: torch.tanh(x*2+1) + x*0.75
@@ -27,15 +30,42 @@ xx = np.linspace(-5,5,1000)
 N = lambda x: np.exp(-x**2/2.)/((2*np.pi)**0.5)
 plt.plot(f(torch.from_numpy(xx)).numpy(), d(torch.from_numpy(xx)).numpy()**(-1)*N(xx))
 plt.plot(xx, N(xx))
-
+plt.clf()
 
 ############### import the sampler ``samplers.distribution4'' 
 ############### train a discriminator on distribution4 and standard gaussian
 ############### estimate the density of distribution4
 
 #######--- INSERT YOUR CODE BELOW ---#######
- 
+directory = "model/"
 
+phi = np.linspace(-1,1, 21)
+
+num_epochs = 1000 
+x = samplers.distribution1(0)
+values = []
+for i in phi : 
+    y = samplers.distribution1(i)
+    model = Discriminator(2, 50, 512, 0) 
+    for epoch in range(num_epochs):
+        x_batch = torch.from_numpy(next(x))
+        y_batch = torch.from_numpy(next(y))
+        model.train(x_batch.type(torch.FloatTensor),y_batch.type(torch.FloatTensor))
+    #torch.save(model.state_dict(), os.path.join(directory, 'best_params_'+str(i)+'.pt'))
+    x_dist = samplers.distribution1(0,10000)
+    y_dist = samplers.distribution1(i,10000)
+    x_dist_batch = torch.from_numpy(next(x_dist))
+    y_dist_batch = torch.from_numpy(next(y_dist))
+    jsd = model.loss_JSD(model.forward(x_dist_batch.type(torch.FloatTensor)), model.forward(y_dist_batch.type(torch.FloatTensor)))
+    values.append(-jsd.data)
+
+print(values)
+plt.plot(phi,values, 'o-')
+plt.ylabel("JSD")
+plt.xlabel("phi")
+plt.title("JSD vs phi")
+plt.savefig(directory + '_JSD_phi.png', bbox_inches='tight')
+plt.clf()
 
 
 
