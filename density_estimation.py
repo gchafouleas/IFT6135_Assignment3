@@ -50,21 +50,23 @@ for i in phi :
     for epoch in range(num_epochs):
         x_batch = torch.from_numpy(next(x))
         y_batch = torch.from_numpy(next(y))
-        model.train(x_batch.type(torch.FloatTensor),y_batch.type(torch.FloatTensor))
+        model.train(x_batch.type(torch.FloatTensor),y_batch.type(torch.FloatTensor), "WD")
     #torch.save(model.state_dict(), os.path.join(directory, 'best_params_'+str(i)+'.pt'))
     x_dist = samplers.distribution1(0,10000)
     y_dist = samplers.distribution1(i,10000)
     x_dist_batch = torch.from_numpy(next(x_dist))
-    y_dist_batch = torch.from_numpy(next(y_dist))
-    jsd = model.loss_JSD(model.forward(x_dist_batch.type(torch.FloatTensor)), model.forward(y_dist_batch.type(torch.FloatTensor)))
-    values.append(-jsd.data)
+    y_dist_batch = torch.from_numpy(next(y_dist)) 
+    x_value = x_dist_batch.type(torch.FloatTensor)
+    y_value = y_dist_batch.type(torch.FloatTensor)
+    wd = torch.mean(model.forward(x_value) - model.forward(y_value))
+    values.append(wd)
 
-print(values)
+
 plt.plot(phi,values, 'o-')
-plt.ylabel("JSD")
-plt.xlabel("phi")
-plt.title("JSD vs phi")
-plt.savefig(directory + '_JSD_phi.png', bbox_inches='tight')
+plt.ylabel("Wasserstein Distance")
+plt.xlabel("Phi")
+plt.title("WD vs. Phi")
+plt.savefig(directory + '_WD_phi.png', bbox_inches='tight')
 plt.clf()
 
 
