@@ -64,7 +64,7 @@ class Discriminator(nn.Module):
         self.optimizer.step()
 
     def loss_JSD(self, x_pred, y_pred):
-        return -(torch.log(torch.tensor([[2.]])) + 1/2*torch.mean(torch.log(x_pred) + torch.log((1- y_pred))))
+        return -(torch.log(torch.tensor([[2.]])) + 1/2*torch.mean(torch.log(x_pred)) + 1/2*torch.mean(torch.log((1- y_pred))))
 
     def loss_WD(self, real, fake, norm):
         return np.mean(real) - np.mean(fake) + self.lamda * (norm -1)**2
