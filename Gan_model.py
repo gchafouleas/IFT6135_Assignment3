@@ -49,7 +49,7 @@ class Discriminator(nn.Module):
             nn.Linear(512, 10),
         )
 
-        self.optimizer = optim.SGD(self.parameters(), lr=np.exp(-3))
+        self.optimizer = optim.Adam(self.parameters(), lr=1e-2, weight_decay=1e-2)
 
     def forward(self, inputs):
         return self.mlp(self.extract_features(inputs))
@@ -57,35 +57,38 @@ class Discriminator(nn.Module):
     def extract_features(self, x):
         return self.conv_stack(x)[:, :, 0, 0]
 
-    def train(self, x, y, type_loss = "JSD"):
+    def train(self, x, y):
 
         self.optimizer.zero_grad()
         x_prediction = self.forward(x)
         y_prediction = self.forward(y)
-        loss = 0; 
-        loss = self.loss(x_prediction, y_prediction, self.Get_z_value(x,y, self.batch_size))
+        loss = 0
+        loss = self.loss(x_prediction, y_prediction)
         loss.backward()
         self.optimizer.step()
+        return loss, x_prediction, y_prediction
 
-        return loss
+    def loss(self, x_pred, y_pred):
+        return -(torch.mean(x_pred) - torch.mean(y_pred))
 
-    def loss(self, x_pred, y_pred, norm):
-        return -(torch.mean(x_pred) - torch.mean(y_pred) - (self.lamda * torch.mean(((norm -1)**2))))
+    def safe_mean(self, input):
+        input = input.mean(dim = 0)
+        input = input.mean(dim=0)
+        return input.mean()
 
-    def Get_z_value(self, x, y, size):
+    def Get_z_value(self, x, y):
         a = torch.empty(x.shape).uniform_(0,1)
-        print(a.shape)
+        if torch.cuda.is_available():
+            a = a.cuda()
         z =  a*x+ (1-a)*y
         z_value = Variable(z, requires_grad=True)
+        z_value.cuda()
         out_interp = self.forward(z_value)
         gradients = grad(outputs=out_interp, inputs=z_value,
-                   grad_outputs=torch.ones(out_interp.size()),
+                   grad_outputs=torch.ones(out_interp.size()).cuda(),
                    retain_graph=True, create_graph=True, only_inputs=True)[0]
 
-        # Mean/Expectation of gradients
-        gradients = gradients.view(gradients.size(0),  -1)
-        gradient_norm = gradients.norm(2, dim=1)
-        return gradient_norm
+        return gradients.view(gradients.size(0),  -1).norm(2, dim=1)
 
 class Generator(nn.Module):
     def __init__(self, batch_size):
@@ -112,7 +115,7 @@ class Generator(nn.Module):
             nn.Tanh()
         )
 
-        self.optimizer = optim.SGD(self.parameters(), lr=np.exp(-3))
+        self.optimizer = optim.Adam(self.parameters(), lr=1e-2, weight_decay=1e-2)
 
     def forward(self, inputs):
         return self.main(inputs)
@@ -125,5 +128,10 @@ class Generator(nn.Module):
         self.optimizer.step()
         return loss
 
+    def safe_mean(self, input):
+        input = input.mean(dim = 0)
+        input = input.mean(dim=0)
+        return input.mean()
+
     def loss(self, y_pred):
-        return torch.mean(torch.log(y_pred))
+        return -self.safe_mean(torch.log(y_pred))
