@@ -5,6 +5,8 @@ import torchvision.transforms as transforms
 import torch
 import classify_svhn
 from classify_svhn import Classifier
+import numpy as np
+from scipy import linalg
 
 SVHN_PATH = "svhn"
 PROCESS_BATCH_SIZE = 32
@@ -75,10 +77,23 @@ def calculate_fid_score(sample_feature_iterator,
     """
     To be implemented by you!
     """
-    raise NotImplementedError(
-        "TO BE IMPLEMENTED."
-        "Part of Assignment 3 Quantitative Evaluations"
-    )
+    samples = []
+    for x in sample_feature_iterator:
+        samples.append(x)
+
+    test_samples = []
+    for y in testset_feature_iterator:
+        test_samples.append(y)
+
+    mu_sample = np.mean(samples, axis=0)
+    mu_test_sample = np.mean(test_samples, axis=0)
+    sigma_sample = np.cov(samples, rowvar=False)
+    sigma_test_sample = np.cov(test_samples, rowvar=False)
+    covmean, _ = linalg.sqrtm(sigma_test_sample*sigma_sample, disp=False)
+
+    fid = np.linalg.norm(mu_test_sample - mu_sample) + np.trace(sigma_test_sample + sigma_sample + 2*covmean)
+
+    return fid
 
 
 if __name__ == "__main__":
@@ -86,7 +101,7 @@ if __name__ == "__main__":
         description='Score a directory of images with the FID score.')
     parser.add_argument('--model', type=str, default="svhn_classifier.pt",
                         help='Path to feature extraction model.')
-    parser.add_argument('directory', type=str,
+    parser.add_argument('directory', type=str, default="fid/",
                         help='Path to image directory')
     args = parser.parse_args()
 
