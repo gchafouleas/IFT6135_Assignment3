@@ -112,7 +112,7 @@ class Generator(nn.Module):
             # state size. (ngf*2) x 16 x 16
             nn.ConvTranspose2d( 64 * 2, 3, 4, 2, 1, bias=False),
             nn.BatchNorm2d(3),
-            nn.Tanh()
+            nn.Sigmoid()
         )
 
         self.optimizer = optim.Adam(self.parameters(), lr=1e-2, weight_decay=1e-2)
