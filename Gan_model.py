@@ -57,7 +57,7 @@ class Discriminator(nn.Module):
     def extract_features(self, x):
         return self.conv_stack(x)[:, :, 0, 0]
 
-    def train(self, x, y):
+    def train_model(self, x, y):
 
         self.optimizer.zero_grad()
         x_prediction = self.forward(x)
@@ -120,7 +120,7 @@ class Generator(nn.Module):
     def forward(self, inputs):
         return self.main(inputs)
 
-    def train(self,y):
+    def train_model(self,y):
 
         self.optimizer.zero_grad()
         loss = self.loss(y)
