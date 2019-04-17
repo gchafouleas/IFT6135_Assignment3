@@ -18,7 +18,7 @@ parser.add_argument('--load_model', type=str, default='gan/models/0_generator.pt
                     help='path for loading the model')
 parser.add_argument('--image_save_directory', type=str, default='gan/samples/',
                     help='path for loading the model')
-parser.add_argument('--num_samples', type=int, default='10',
+parser.add_argument('--num_samples', type=int, default='1000',
                     help='number of samples per evaluation')
 
 args = parser.parse_args()
