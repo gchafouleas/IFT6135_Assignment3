@@ -8,6 +8,7 @@ from collections import OrderedDict
 from Gan_model import Discriminator
 from Gan_model import Generator
 import classify_svhn as data
+import matplotlib.pyplot as plt
 import os
 
 #import data 
@@ -15,7 +16,7 @@ directory = "svhn/"
 batch_size = 32
 torch.manual_seed(1111)
 train_loader, valid_loader, test_loader = data.get_data_loader(directory, batch_size)
-num_epochs = 50 
+num_epochs = 1 
 discriminator = Discriminator(512)
 generator = Generator(512)
 model_directory = "gan/"
@@ -26,6 +27,7 @@ discriminator_updates = 5
 
 def main():
     train_loss_per_epoch = []
+    valid_loss_per_epoch = []
     for epoch in range(num_epochs):
         print("epoch "+ str(epoch))
         train_loss = []
@@ -79,22 +81,24 @@ def main():
             fake = discriminator(g_z)
             real = discriminator(real_data)
             d_loss= discriminator.loss(real, fake)
-            valid_loss.append(d_loss)
+            valid_loss.append(d_loss.item())
             _, x_predicted = torch.max(real_prediction.data, 1)
             _, y_predicted = torch.max(y_prediction.data, 1)
             discriminator_correct += (x_predicted == targets).sum().item()
             total += targets.size(0)
             generator_correct += (x_predicted == targets).sum().item()
-
+        valid_loss_per_epoch.append(np.mean(valid_loss))
         #saving model for each epoch
-        torch.save(discriminator.state_dict(), os.path.join(model_directory, str(epoch)+'_model.pt'))
+        torch.save(discriminator.state_dict(), os.path.join(model_directory + "models/", str(epoch)+'_model.pt'))
 
-    plt.plot(loss_per_epoch, 'o-')
+    plt.plot(train_loss_per_epoch, 'o-')
+    plt.plot(valid_loss_per_epoch, 'o-')
     plt.ylabel("loss")
     plt.xlabel("epoch")
     plt.title("loss vs epoch")
-    plt.savefig(directory + '_JSD_phi.png', bbox_inches='tight')
-    plt.show()
-    plt.clf()        
+    plt.legend(labels = ["train", "valid"])
+    plt.savefig(model_directory + 'loss_epoch.png', bbox_inches='tight')
+    plt.clf()
+            
 if __name__=='__main__':
     main()         
