@@ -8,68 +8,66 @@ from collections import OrderedDict
 from torch.autograd import grad
 
 class Discriminator(nn.Module):
-    def __init__(self, batch_size):
+    def __init__(self, input_size, hidden_size, batch_size, dp_keep_prob):
 
         super(Discriminator, self).__init__()
         #initilization of variables
+        self.hidden_size = hidden_size
         self.batch_size = batch_size
+        self.dp_keep_prob = dp_keep_prob
         self.lamda = 10
         #Initialize hidden layers
-        self.conv_stack = nn.Sequential(
-            nn.Conv2d(3, 8, 3, padding=1),
-            nn.ELU(),
-            nn.Dropout2d(p=0.1),
-            nn.Conv2d(8, 16, 3, padding=1),
-            nn.ELU(),
-            nn.Dropout2d(p=0.1),
-            nn.MaxPool2d(2),
-
-            nn.Conv2d(16, 16, 3, padding=1),
-            nn.ELU(),
-            nn.Dropout2d(p=0.1),
-            nn.Conv2d(16, 32, 3, padding=1),
-            nn.ELU(),
-            nn.Dropout2d(p=0.1),
-            nn.MaxPool2d(2),
-
-            nn.Conv2d(32, 64, 3, padding=1),
-            nn.ELU(),
-            nn.Dropout2d(p=0.1),
-            nn.Conv2d(64, 128, 3, padding=1),
-            nn.ELU(),
-            nn.Dropout2d(p=0.1),
-            nn.MaxPool2d(2),
-
-            nn.Conv2d(128, 512, 2),
+        self.hidden0 = nn.Sequential( 
+            nn.Linear(input_size, hidden_size),
+            nn.ReLU(),
+            nn.Dropout(1- dp_keep_prob)
+        )
+        self.hidden1 = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Dropout(1- dp_keep_prob)
+        )
+        self.hidden2 = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Dropout(1- dp_keep_prob)
+        )
+        self.out = nn.Sequential(
+            torch.nn.Linear(hidden_size, 1),
+            torch.nn.Sigmoid()
         )
 
-        self.mlp = nn.Sequential(
-            nn.ELU(),
-            nn.Dropout(0.5),
-            nn.Linear(512, 10),
-        )
-
-        self.optimizer = optim.Adam(self.parameters(), lr=1e-2, weight_decay=1e-2)
+        self.optimizer = optim.Adam(self.parameters(), lr=0.0002)
 
     def forward(self, inputs):
-        return self.mlp(self.extract_features(inputs))
-
-    def extract_features(self, x):
-        return self.conv_stack(x)[:, :, 0, 0]
+        x = self.hidden0(inputs)
+        x = self.hidden1(x)
+        x = self.hidden2(x)
+        x = self.out(x)
+        return x
 
     def train_model(self, x, y):
 
         self.optimizer.zero_grad()
         x_prediction = self.forward(x)
         y_prediction = self.forward(y)
-        loss = 0
-        loss = self.loss(x_prediction, y_prediction)
-        loss.backward()
-        self.optimizer.step()
-        return loss, x_prediction, y_prediction
 
-    def loss(self, x_pred, y_pred):
-        return -(torch.mean(x_pred) - torch.mean(y_pred))
+        one = torch.FloatTensor([1])
+        mone = one * -1
+        if torch.cuda.is_available():
+            one = one.cuda()
+            mone = mone.cuda()
+
+        gradient_penalty = self.Get_z_value(x,y)
+        gradient_penalty.backward()
+        x_prediction = x_prediction.mean()
+        y_prediction = y_prediction.mean()
+        y_prediction.backward()
+        x_prediction.backward()
+        D_cost = y_prediction - x_prediction + gradient_penalty
+        Wasserstein_D = x_prediction - y_prediction
+        self.optimizer.step()
+        return Wasserstein_D, x_prediction, y_prediction
 
     def safe_mean(self, input):
         input = input.mean(dim = 0)
@@ -88,7 +86,7 @@ class Discriminator(nn.Module):
                    grad_outputs=torch.ones(out_interp.size()).cuda(),
                    retain_graph=True, create_graph=True, only_inputs=True)[0]
 
-        return gradients.view(gradients.size(0),  -1).norm(2, dim=1)
+        return ((gradients.norm(2, dim=1) - 1)**2).mean() * self.lamda
 
 class Generator(nn.Module):
     def __init__(self, batch_size):
@@ -115,7 +113,7 @@ class Generator(nn.Module):
             nn.Sigmoid()
         )
 
-        self.optimizer = optim.Adam(self.parameters(), lr=1e-2, weight_decay=1e-2)
+        self.optimizer = optim.Adam(self.parameters(), lr=0.0002)
 
     def forward(self, inputs):
         return self.main(inputs)
@@ -123,8 +121,13 @@ class Generator(nn.Module):
     def train_model(self,y):
 
         self.optimizer.zero_grad()
-        loss = self.loss(y)
-        loss.backward()
+        one = torch.FloatTensor([1])
+        mone = one * -1
+        if torch.cuda.is_available():
+            mone = mone.cuda()
+        y = y.mean()
+        y.backward()
+        cost = -y
         self.optimizer.step()
         return loss
 
@@ -132,6 +135,3 @@ class Generator(nn.Module):
         input = input.mean(dim = 0)
         input = input.mean(dim=0)
         return input.mean()
-
-    def loss(self, y_pred):
-        return -self.safe_mean(torch.log(y_pred))

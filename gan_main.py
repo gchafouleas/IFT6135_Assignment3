@@ -23,9 +23,9 @@ directory = "svhn/"
 batch_size = 32
 torch.manual_seed(1111)
 train_loader, valid_loader, test_loader = data.get_data_loader(directory, batch_size)
-num_epochs = 1 
-discriminator = Discriminator(512)
-generator = Generator(512)
+num_epochs = 100 
+discriminator = Discriminator(32, 50, batch_size, 0.3)
+generator = Generator(32)
 model_directory = "gan/"
 if torch.cuda.is_available():
     discriminator = discriminator.cuda()
@@ -40,31 +40,21 @@ def main():
             print("epoch "+ str(epoch))
             train_loss = []
             valid_loss = []
-            total = 0
-            discriminator_correct = 0
-            generator_correct = 0
             discriminator.train()
             generator.train()
+            update = 0
             for i, data in enumerate(train_loader):
-                update = 0
                 real_data, targets = data
                 N = real_data.size(0)
                 #train discriminator
-                for i in range(discriminator_updates):
-                    noise = Variable(torch.randn(N, 100, 1, 1))
-                    if torch.cuda.is_available():
-                        noise = noise.cuda()
-                        real_data = real_data.cuda()
-                        targets = targets.cuda()
-                    g_z = generator(noise)
-                    d_loss, real_prediction, y_prediction = discriminator.train_model(real_data, g_z)
-                    _, x_predicted = torch.max(real_prediction.data, 1)
-                    _, y_predicted = torch.max(y_prediction.data, 1)
-                    discriminator_correct += (x_predicted == targets).sum().item()
-                    total += targets.size(0)
-                    generator_correct += (x_predicted == targets).sum().item()
-                    train_loss.append(d_loss.item())
-                    update += 1
+                noise = Variable(torch.randn(N, 100, 1, 1))
+                if torch.cuda.is_available():
+                    noise = noise.cuda()
+                    real_data = real_data.cuda()
+                    targets = targets.cuda()
+                g_z = generator(noise)
+                d_loss, real_prediction, y_prediction = discriminator.train_model(real_data, g_z)
+                train_loss.append(d_loss.item())
                 #train generator
                 if update == discriminator_updates:
                     noise = Variable(torch.randn(N, 100, 1, 1))
@@ -74,9 +64,9 @@ def main():
                     output = discriminator(g_z)
                     g_loss = generator.train_model(output)
                     update = 0
-            print("Error dis: ", discriminator_correct/total)
-            print("Error gene: ", generator_correct/total)
+                update += 1
             train_loss_per_epoch.append(np.mean(train_loss))
+            print("train loss: ", np.mean(train_loss))
             discriminator.eval()
             generator.eval()
             for i, data in enumerate(valid_loader):
@@ -90,9 +80,10 @@ def main():
                 g_z = generator(noise)
                 fake = discriminator(g_z)
                 real = discriminator(real_data)
-                d_loss= discriminator.loss(real, fake)
+                d_loss= torch.mean(real) - torch.mean(fake)
                 valid_loss.append(d_loss.item())
             valid_loss_per_epoch.append(np.mean(valid_loss))
+            print("valid loss: ", np.mean(valid_loss))
             #saving model for each epoch
             torch.save(generator.state_dict(), os.path.join(model_directory + "models/", str(epoch)+'_generator.pt'))
 
