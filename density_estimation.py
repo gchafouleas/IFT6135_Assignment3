@@ -13,13 +13,14 @@ import torch
 import matplotlib.pyplot as plt
 import samplers as samplers
 from discriminator import Discriminator
+from scipy.stats import norm
 import os
 import argparse
 
 parser = argparse.ArgumentParser(description='PyTorch model')
 parser.add_argument('--loss_type', type=str, default='JSD',
                     help='loss to use; JSD WD')
-parser.add_argument('--question', type=int, default='3',
+parser.add_argument('--question', type=int, default='4',
                     help='loss to use; 3 kor 4')
 
 
@@ -91,32 +92,45 @@ if args.question ==3:
     plt.clf()    
 
 if args.question == 4:
-    f1_dist = samplers.distribution3(512)
-    f0_dist = samplers.distribution4(512)
+    f0_dist = samplers.distribution3(512)
+    f1_dist = samplers.distribution4(512)
     model = Discriminator(1, 50, 512, 0)
     for epoch in range(num_epochs):
         f1_batch = torch.from_numpy(next(f1_dist))
         f0_batch = torch.from_numpy(next(f0_dist))
         model.train(f1_batch.type(torch.FloatTensor),f0_batch.type(torch.FloatTensor))
+        print("train")
     f1_value = []
+    f1_real = []
+    f_0_values = []
     discriminator_outputs = []
-    for batch in xx: 
-        f0 = samplers.distribution3(np.abs(int(batch)))
-        x = next(f0)
-        f0_batch = torch.from_numpy(next(f0))
-        x = f0_batch.type(torch.FloatTensor)
-        output = model(x)
-        f1 = (x * output)/(1 - output)
+    for x in xx: 
+        f_0 = N(x)
+        x = torch.tensor([[x]])
+        disc = model(x)
+        f1 = (f_0 * disc)/(1 - disc)
         f1_value.append(f1)
-        discriminator_outputs.append(output)
+        f1_real.append(f(x).item())
+        f_0_values.append(f_0)
+        discriminator_outputs.append(disc)
 
-    plt.plot(f1_value, 'o-')
-    plt.plot(discriminator_outputs, 'o-')
-    plt.ylabel("y")
-    plt.xlabel("x")
-    plt.title("Discriminator output and estimated f1")
-    plt.legend(labels = ["F1", "D(x)"])
-    plt.savefig(directory + '_question_4.png', bbox_inches='tight')
+    
+    r = discriminator_outputs # evaluate xx using your discriminator; replace xx with the output
+    plt.figure(figsize=(8,4))
+    plt.subplot(1,2,1)
+    plt.plot(xx,r)
+    plt.title(r'$D(x)$')
+
+    estimate = f1_value # estimate the density of distribution4 (on xx) using the discriminator; 
+                                    # replace "np.ones_like(xx)*0." with your estimate
+    plt.subplot(1,2,2)
+    plt.plot(xx,estimate)
+    plt.plot(f(torch.from_numpy(xx)).numpy(), d(torch.from_numpy(xx)).numpy()**(-1)*N(xx))
+    plt.legend(['Estimated','True'])
+    plt.title('Estimated vs True')
+    plt.savefig(directory + '_question4.png', bbox_inches='tight')
+    plt.show()    
+    
 
 
 
@@ -140,19 +154,7 @@ if args.question == 4:
 
 
 
-r = xx # evaluate xx using your discriminator; replace xx with the output
-plt.figure(figsize=(8,4))
-plt.subplot(1,2,1)
-plt.plot(xx,r)
-plt.title(r'$D(x)$')
 
-estimate = np.ones_like(xx)*0.2 # estimate the density of distribution4 (on xx) using the discriminator; 
-                                # replace "np.ones_like(xx)*0." with your estimate
-plt.subplot(1,2,2)
-plt.plot(xx,estimate)
-plt.plot(f(torch.from_numpy(xx)).numpy(), d(torch.from_numpy(xx)).numpy()**(-1)*N(xx))
-plt.legend(['Estimated','True'])
-plt.title('Estimated vs True')
 
 
 
