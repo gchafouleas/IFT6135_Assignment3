@@ -30,7 +30,7 @@ model_directory = "gan/"
 if torch.cuda.is_available():
     discriminator = discriminator.cuda()
     generator = generator.cuda()
-discriminator_updates = 5
+discriminator_updates = 6
 
 def main():
     if args.eval_mode == "Train":

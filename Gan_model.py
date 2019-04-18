@@ -37,7 +37,7 @@ class Discriminator(nn.Module):
             torch.nn.Sigmoid()
         )
 
-        self.optimizer = optim.Adam(self.parameters(), lr=0.0002)
+        self.optimizer = optim.Adam(self.parameters())
 
     def forward(self, inputs):
         x = self.hidden0(inputs)
@@ -62,8 +62,8 @@ class Discriminator(nn.Module):
         gradient_penalty.backward()
         x_prediction = x_prediction.mean()
         y_prediction = y_prediction.mean()
-        y_prediction.backward()
-        x_prediction.backward()
+        y_prediction.backward(one)
+        x_prediction.backward(mone)
         D_cost = y_prediction - x_prediction + gradient_penalty
         Wasserstein_D = x_prediction - y_prediction
         self.optimizer.step()
@@ -113,7 +113,7 @@ class Generator(nn.Module):
             nn.Sigmoid()
         )
 
-        self.optimizer = optim.Adam(self.parameters(), lr=0.0002)
+        self.optimizer = optim.Adam(self.parameters())
 
     def forward(self, inputs):
         return self.main(inputs)
@@ -126,10 +126,10 @@ class Generator(nn.Module):
         if torch.cuda.is_available():
             mone = mone.cuda()
         y = y.mean()
-        y.backward()
+        y.backward(mone)
         cost = -y
         self.optimizer.step()
-        return loss
+        return cost
 
     def safe_mean(self, input):
         input = input.mean(dim = 0)
