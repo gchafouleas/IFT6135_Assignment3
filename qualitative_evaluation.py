@@ -14,7 +14,7 @@ import os
 import argparse
 
 parser = argparse.ArgumentParser(description='PyTorch model')
-parser.add_argument('--load_model', type=str, default='gan/models/7_generator.pt',
+parser.add_argument('--load_model', type=str, default='gan/models/0_generator.pt',
                     help='path for loading the model')
 parser.add_argument('--image_save_directory', type=str, default='gan/samples/',
                     help='path for loading the model')
@@ -30,7 +30,7 @@ model.load_state_dict(torch.load(args.load_model))
 #generate samples 
 for i in range(args.num_samples):
     #generate image from normal distribution
-    noise = Variable(torch.randn(1, 100, 1, 1))
+    noise = Variable(torch.randn(1, 100))
     image = model(noise)
     image = image.detach()
     plt.imshow(image[0].permute(2,1,0))
@@ -39,7 +39,7 @@ for i in range(args.num_samples):
 
     #generate image from disturbed normal distribution
     for k in range(25):
-        noise[0,k+5,0,0] += 20
+        noise[0,k+5] += 20
     image = model(noise)
     image = image.detach()
     plt.imshow(image[0].permute(2,1,0))
@@ -51,8 +51,8 @@ alpha = np.linspace(0,1,10)
 for a in alpha:
     #interpolate latent
     a = round(a,1)
-    z_0 = Variable(torch.randn(1, 100, 1, 1))
-    z_1 = Variable(torch.randn(1, 100, 1, 1))
+    z_0 = Variable(torch.randn(1, 100))
+    z_1 = Variable(torch.randn(1, 100))
     z_a = a*z_0 + (1-a)*z_1
     image = model(z_a)
     image = image.detach()

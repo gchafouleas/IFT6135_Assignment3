@@ -42,12 +42,14 @@ def main():
             valid_loss = []
             discriminator.train()
             generator.train()
+            discriminator.zero_grad()
+            generator.zero_grad()
             update = 0
             for i, data in enumerate(train_loader):
                 real_data, targets = data
                 N = real_data.size(0)
                 #train discriminator
-                noise = Variable(torch.randn(N, 100, 1, 1))
+                noise = Variable(torch.randn(N, 100))
                 if torch.cuda.is_available():
                     noise = noise.cuda()
                     real_data = real_data.cuda()
@@ -57,7 +59,9 @@ def main():
                 train_loss.append(d_loss.item())
                 #train generator
                 if update == discriminator_updates:
-                    noise = Variable(torch.randn(N, 100, 1, 1))
+                    discriminator.zero_grad()
+                    generator.zero_grad()
+                    noise = Variable(torch.randn(N, 100))
                     if torch.cuda.is_available():
                         noise = noise.cuda()
                     g_z = generator(noise)
@@ -72,7 +76,7 @@ def main():
             for i, data in enumerate(valid_loader):
                 real_data, targets = data
                 N = real_data.size(0)
-                noise = Variable(torch.randn(N, 100, 1, 1))
+                noise = Variable(torch.randn(N, 100))
                 if torch.cuda.is_available():
                     noise = noise.cuda()
                     real_data = real_data.cuda()

@@ -6,6 +6,7 @@ import numpy as np
 from torch.autograd import Variable
 from collections import OrderedDict
 from torch.autograd import grad
+from torch.functional import F
 
 class Discriminator(nn.Module):
     def __init__(self, input_size, hidden_size, batch_size, dp_keep_prob):
@@ -94,29 +95,33 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         #initilization of variables
         self.batch_size = batch_size
-        self.main = nn.Sequential(
-            # input is Z, going into a convolution
-            nn.ConvTranspose2d(100, 64 * 8, 4, 1, 0, bias=False),
-            nn.BatchNorm2d(64 * 8),
-            nn.ReLU(True),
-            # state size. (ngf*8) x 4 x 4
-            nn.ConvTranspose2d(64 * 8, 64 * 4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(64 * 4),
-            nn.ReLU(True),
-            # state size. (ngf*4) x 8 x 8
-            nn.ConvTranspose2d( 64 * 4, 64 * 2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(64 * 2),
-            nn.ReLU(True),
-            # state size. (ngf*2) x 16 x 16
-            nn.ConvTranspose2d( 64 * 2, 3, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(3),
-            nn.Sigmoid()
-        )
+        self.fc2 = nn.Linear(100, 256)
+        self.elu4 = nn.ELU()
+
+        self.conv4 = nn.Conv2d(256, 64, 5, padding=4)
+        self.elu5 = nn.ELU()
+        self.sample1 = nn.Upsample(scale_factor=2, mode='bilinear')
+
+        self.conv5 = nn.Conv2d(64, 32, 3, padding=2)
+        self.elu6 = nn.ELU()
+        self.sample2 = nn.Upsample(scale_factor=2, mode='bilinear')
+
+        self.conv6 = nn.Conv2d(32, 16, 3, padding=2)
+        self.elu7 = nn.ELU()
+
+        self.conv7 = nn.Conv2d(16, 3, 3, padding=4)
 
         self.optimizer = optim.Adam(self.parameters())
 
     def forward(self, inputs):
-        return self.main(inputs)
+        h1 = self.elu4(self.fc2(inputs))
+        h1 = h1[:,:,None,None]
+        h2 = self.sample1(self.elu5(self.conv4(h1)))
+        h3 = self.sample2(self.elu6(self.conv5(h2)))
+        h4 = self.elu7(self.conv6(h3))
+        h5 = self.conv7(h4)
+        Sigmoid = nn.Sigmoid()
+        return Sigmoid(h5)
 
     def train_model(self,y):
 
