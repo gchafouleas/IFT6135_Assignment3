@@ -53,27 +53,17 @@ class Discriminator(nn.Module):
         x_prediction = self.forward(x)
         y_prediction = self.forward(y)
 
-        one = torch.FloatTensor([1])
-        mone = one * -1
-        if torch.cuda.is_available():
-            one = one.cuda()
-            mone = mone.cuda()
+        loss = 0;          
+        loss = self.loss(x_prediction, y_prediction, self.Get_z_value(x,y))
 
-        gradient_penalty = self.Get_z_value(x,y)
-        gradient_penalty.backward()
-        x_prediction = x_prediction.mean()
-        y_prediction = y_prediction.mean()
-        y_prediction.backward(one)
-        x_prediction.backward(mone)
-        D_cost = y_prediction - x_prediction + gradient_penalty
-        Wasserstein_D = x_prediction - y_prediction
+        self.optimizer.zero_grad()
+        loss.backward()
         self.optimizer.step()
+        Wasserstein_D = x_prediction.mean() - y_prediction.mean()
         return Wasserstein_D, x_prediction, y_prediction
 
-    def safe_mean(self, input):
-        input = input.mean(dim = 0)
-        input = input.mean(dim=0)
-        return input.mean()
+    def loss(self, x_pred, y_pred, norm):
+        return y_pred.mean() - x_pred.mean() + norm
 
     def Get_z_value(self, x, y):
         a = torch.empty(x.shape).uniform_(0,1)
@@ -95,33 +85,29 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         #initilization of variables
         self.batch_size = batch_size
-        self.fc2 = nn.Linear(100, 256)
-        self.elu4 = nn.ELU()
-
-        self.conv4 = nn.Conv2d(256, 64, 5, padding=4)
-        self.elu5 = nn.ELU()
-        self.sample1 = nn.Upsample(scale_factor=2, mode='bilinear')
-
-        self.conv5 = nn.Conv2d(64, 32, 3, padding=2)
-        self.elu6 = nn.ELU()
-        self.sample2 = nn.Upsample(scale_factor=2, mode='bilinear')
-
-        self.conv6 = nn.Conv2d(32, 16, 3, padding=2)
-        self.elu7 = nn.ELU()
-
-        self.conv7 = nn.Conv2d(16, 3, 3, padding=4)
+        self.main = nn.Sequential(
+            # input is Z, going into a convolution
+            nn.ConvTranspose2d(100, 64 * 8, 4, 1, 0, bias=False),
+            nn.BatchNorm2d(64 * 8),
+            nn.ReLU(True),
+            # state size. (ngf*8) x 4 x 4
+            nn.ConvTranspose2d(64 * 8, 64 * 4, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(64 * 4),
+            nn.ReLU(True),
+            # state size. (ngf*4) x 8 x 8
+            nn.ConvTranspose2d( 64 * 4, 64 * 2, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(64 * 2),
+            nn.ReLU(True),
+            # state size. (ngf*2) x 16 x 16
+            nn.ConvTranspose2d( 64 * 2, 3, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(3),
+            nn.Sigmoid()
+        )
 
         self.optimizer = optim.Adam(self.parameters())
 
     def forward(self, inputs):
-        h1 = self.elu4(self.fc2(inputs))
-        h1 = h1[:,:,None,None]
-        h2 = self.sample1(self.elu5(self.conv4(h1)))
-        h3 = self.sample2(self.elu6(self.conv5(h2)))
-        h4 = self.elu7(self.conv6(h3))
-        h5 = self.conv7(h4)
-        Sigmoid = nn.Sigmoid()
-        return Sigmoid(h5)
+        return self.main(inputs)
 
     def train_model(self,y):
 
@@ -135,8 +121,3 @@ class Generator(nn.Module):
         cost = -y
         self.optimizer.step()
         return cost
-
-    def safe_mean(self, input):
-        input = input.mean(dim = 0)
-        input = input.mean(dim=0)
-        return input.mean()
