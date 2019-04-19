@@ -110,14 +110,8 @@ class Generator(nn.Module):
         return self.main(inputs)
 
     def train_model(self,y):
-
         self.optimizer.zero_grad()
-        one = torch.FloatTensor([1])
-        mone = one * -1
-        if torch.cuda.is_available():
-            mone = mone.cuda()
-        y = y.mean()
-        y.backward(mone)
-        cost = -y
+        l = -y.mean()
+        l.backward()
         self.optimizer.step()
-        return cost
+        return l
