@@ -21,21 +21,18 @@ class Discriminator(nn.Module):
         self.hidden0 = nn.Sequential( 
             nn.Linear(input_size, hidden_size),
             nn.ReLU(),
-            nn.Dropout(1- dp_keep_prob)
         )
         self.hidden1 = nn.Sequential(
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
-            nn.Dropout(1- dp_keep_prob)
         )
         self.hidden2 = nn.Sequential(
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
-            nn.Dropout(1- dp_keep_prob)
         )
         self.out = nn.Sequential(
             torch.nn.Linear(hidden_size, 1),
-            torch.nn.Sigmoid()
+             nn.ReLU(),
         )
 
         self.optimizer = optim.Adam(self.parameters())
@@ -55,12 +52,9 @@ class Discriminator(nn.Module):
 
         loss = 0;          
         loss = self.loss(x_prediction, y_prediction, self.Get_z_value(x,y))
-
-        self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-        Wasserstein_D = x_prediction.mean() - y_prediction.mean()
-        return Wasserstein_D, x_prediction, y_prediction
+        return loss, x_prediction, y_prediction
 
     def loss(self, x_pred, y_pred, norm):
         return y_pred.mean() - x_pred.mean() + norm
@@ -88,19 +82,15 @@ class Generator(nn.Module):
         self.main = nn.Sequential(
             # input is Z, going into a convolution
             nn.ConvTranspose2d(100, 64 * 8, 4, 1, 0, bias=False),
-            nn.BatchNorm2d(64 * 8),
             nn.ReLU(True),
             # state size. (ngf*8) x 4 x 4
             nn.ConvTranspose2d(64 * 8, 64 * 4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(64 * 4),
             nn.ReLU(True),
             # state size. (ngf*4) x 8 x 8
             nn.ConvTranspose2d( 64 * 4, 64 * 2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(64 * 2),
             nn.ReLU(True),
             # state size. (ngf*2) x 16 x 16
             nn.ConvTranspose2d( 64 * 2, 3, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(3),
             nn.Sigmoid()
         )
 
@@ -111,7 +101,7 @@ class Generator(nn.Module):
 
     def train_model(self,y):
         self.optimizer.zero_grad()
-        l = -y.mean()
-        l.backward()
+        y = -y.mean()
+        y.backward()
         self.optimizer.step()
-        return l
+        return y

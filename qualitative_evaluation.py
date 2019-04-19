@@ -14,7 +14,7 @@ import os
 import argparse
 
 parser = argparse.ArgumentParser(description='PyTorch model')
-parser.add_argument('--load_model', type=str, default='gan/models/16_generator.pt',
+parser.add_argument('--load_model', type=str, default='gan/models/10_generator.pt',
                     help='path for loading the model')
 parser.add_argument('--image_save_directory', type=str, default='gan/samples/',
                     help='path for loading the model')
