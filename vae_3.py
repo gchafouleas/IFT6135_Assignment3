@@ -62,21 +62,6 @@ class VAE(nn.Module):
         self.pd5 = nn.ReplicationPad2d(1)
         self.d6 = nn.Conv2d(width, channels, 3, 1)
 
-        self.main = nn.Sequential(
-            # input is Z, going into a convolution
-            nn.ConvTranspose2d(100, 64 * 8, 4, 1, 0, bias=False),
-            nn.ReLU(True),
-            # state size. (ngf*8) x 4 x 4
-            nn.ConvTranspose2d(64 * 8, 64 * 4, 4, 2, 1, bias=False),
-            nn.ReLU(True),
-            # state size. (ngf*4) x 8 x 8
-            nn.ConvTranspose2d( 64 * 4, 64 * 2, 4, 2, 1, bias=False),
-            nn.ReLU(True),
-            # state size. (ngf*2) x 16 x 16
-            nn.ConvTranspose2d( 64 * 2, 3, 4, 2, 1, bias=False),
-            nn.Sigmoid()
-        )
-
 
     def encode(self, x):
         h1 = self.leakyrelu(self.bn1(self.e1(x)))
@@ -99,14 +84,13 @@ class VAE(nn.Module):
     def decode(self, z):
         #z = self.d2(z)
         #z = z.view(z.size(0), self.latent_variable_size, 1, 1)
-        #h1 = self.relu(self.d1(z))
-        z = z.view(z.size(0), self.latent_variable_size, 1, 1)
-        #h2 = self.leakyrelu(self.bn6(self.d2(self.pd1(self.up1(z)))))
-        #h3 = self.leakyrelu(self.bn7(self.d3(self.pd2(self.up2(h2)))))
-        #h5 = self.leakyrelu(self.bn8(self.d4(self.pd3(self.up3(h3)))))
+        h1 = self.relu(self.d1(z))
+        h1 = h1.view(-1, self.width*8*2, 4, 4)
+        h2 = self.leakyrelu(self.bn6(self.d2(self.pd1(self.up1(h1)))))
+        h3 = self.leakyrelu(self.bn7(self.d3(self.pd2(self.up2(h2)))))
+        h5 = self.leakyrelu(self.bn8(self.d4(self.pd3(self.up3(h3)))))
 
-        #return self.sigmoid(self.d6(self.pd5(self.up5(h5))))
-        return self.main(z)
+        return self.sigmoid(self.d6(self.pd5(self.up5(h5))))
 
     def get_latent_var(self, x):
         mu, logvar = self.encode(x.view(-1, self.channels, self.width, self.height))

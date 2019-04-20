@@ -64,7 +64,7 @@ def valid_model(epoch):
         decode_x, mu, logvar = model(real_data)
         loss = vae_loss(decode_x, real_data, mu, logvar)
         valid_loss.append(loss.item())
-        torchvision.utils.save_image(real_data.data, 'vae/imgs/Epoch_{}_data.jpg'.format(epoch), nrow=8, padding=2)
+        #torchvision.utils.save_image(real_data.data, 'vae/imgs/Epoch_{}_data.jpg'.format(epoch), nrow=8, padding=2)
         torchvision.utils.save_image(decode_x.data, 'vae/imgs/Epoch_{}_recon.jpg'.format(epoch), nrow=8, padding=2)
 
 def main():
