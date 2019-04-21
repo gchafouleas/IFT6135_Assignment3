@@ -47,8 +47,8 @@ optimizer_generator = optim.Adam(generator.parameters(), lr=1e-4)
 
 def vae_loss(decode_x, x, mu, logvar):
     loss = MSE(decode_x, x)
-    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1)
-    loss = torch.mean(loss + KLD)
+    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp()) 
+    loss = loss + KLD
 
     return loss
 
