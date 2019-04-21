@@ -26,24 +26,22 @@ torch.manual_seed(1111)
 train_loader, valid_loader, test_loader = data.get_data_loader(directory, batch_size)
 num_epochs = 100
 
-binary_loss = nn.BCELoss(reduction='sum').cuda()
-generator = Generator(width=32, height=32, channels=3, hidden_size=500, latent_size=100,
-        filters=64)
-model = VAE(width=32, height=32, channels=3, latent_size=100)
+MSE = nn.MSELoss(reduction='sum').cuda()
+
+generator = Generator(latent_size=100)
+
+model = VAE(latent_size=100)
 if torch.cuda.is_available():
     model.cuda()
     generator.cuda()
+
 optimizer_encoder = optim.Adam(model.parameters(), lr=1e-4)
 optimizer_generator = optim.Adam(generator.parameters(), lr=1e-4)
 
 def vae_loss(decode_x, x, mu, logvar):
-    decode_x = decode_x.view(decode_x.size(0), -1)
-    x = x.view(x.size(0), -1)
-    BCE = -torch.sum(x*torch.log(torch.clamp(decode_x, min=1e-10))+
-        (1-x)*torch.log(torch.clamp(1-decode_x, min=1e-10)), 1)
+    loss = MSE(decode_x, x)
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1)
-        # Normalise by same number of elements as in reconstruction
-    loss = torch.mean(BCE + KLD)
+    loss = torch.mean(loss + KLD)
 
     return loss
 

@@ -12,16 +12,13 @@ import numpy as np
 import math
 
 class VAE(nn.Module):
-    def __init__(self, width=32, height=32, channels=3, 
+    def __init__(self, 
         latent_size=100):
         super(self.__class__, self).__init__()
         self.latent_size = latent_size
-        self.width = width
-        self.height = height
-        self.channels = channels
 
         self.encoder = nn.Sequential(
-            nn.Conv2d(channels, 64, kernel_size=4, stride=2, padding=1),
+            nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(True),
             nn.Conv2d(64, 2*64, kernel_size=4, stride=2, padding=1),
@@ -45,17 +42,6 @@ class VAE(nn.Module):
           return eps.mul(std).add_(mu)
         else:
           return mu
-
-    def loss_function(self, decode_x, x, mu, logvar):
-        decode_x = decode_x.view(decode_x.size(0), -1)
-        x = x.view(x.size(0), -1)
-        BCE = -torch.sum(x*torch.log(torch.clamp(decode_x, min=1e-10))+
-            (1-x)*torch.log(torch.clamp(1-decode_x, min=1e-10)), 1)
-        KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1)
-        # Normalise by same number of elements as in reconstruction
-        loss = torch.mean(BCE + KLD)
-
-        return loss
 
     def forward(self, x):
         h = self.encoder(x)
