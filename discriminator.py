@@ -69,8 +69,8 @@ class Discriminator(nn.Module):
     def loss_JSD(self, x_pred, y_pred):
         return -(torch.log(torch.tensor([[2.]])) + 1/2*torch.mean(torch.log(x_pred)) + 1/2*torch.mean(torch.log((1- y_pred))))
 
-    def loss_WD(self, x_pred, y_pred, norm):
-        return -(torch.mean(x_pred) - torch.mean(y_pred) - (self.lamda * torch.mean(((norm -1)**2))))
+    def loss_WD(self, x_pred, y_pred, gradient_penalty):
+        return -(torch.mean(x_pred) - torch.mean(y_pred) - gradient_penalty)
 
     def Get_z_value(self, x, y, size):
         a = torch.empty(size,1).uniform_(0,1)
@@ -84,4 +84,6 @@ class Discriminator(nn.Module):
         # Mean/Expectation of gradients
         gradients = gradients.view(gradients.size(0),  -1)
         gradient_norm = gradients.norm(2, dim=1)
-        return gradient_norm
+        gradient_penalty = (self.lamda * torch.mean(((gradient_norm -1)**2)))
+        gradient_penality = Variable(gradient_penalty.data, requires_grad = True)
+        return gradient_penalty
