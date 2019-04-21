@@ -12,4 +12,4 @@ source $SLURM_TMPDIR/env/bin/activate
 
 pip install --no-index -r requirements.txt
 
-python wgan.py
+python vae_main_3.py --eval_mode=Train
