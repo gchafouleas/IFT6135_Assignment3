@@ -21,13 +21,13 @@ class Generator(nn.Module):
             nn.ReLU(True)
         )
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(500, 4*64, kernel_size=4),
-            nn.BatchNorm2d(4*64),
+            nn.ConvTranspose2d(500, 256, kernel_size=4),
+            nn.BatchNorm2d(256),
             nn.ReLU(True),
-            nn.ConvTranspose2d(4*64, 2*64, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(2*64),
+            nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(128),
             nn.ReLU(True),
-            nn.ConvTranspose2d(2*64, 64, kernel_size=4, stride=2, padding=1),
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(True),
             nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1)
