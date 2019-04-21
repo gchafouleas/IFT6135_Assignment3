@@ -1,12 +1,7 @@
 import torch
 import torch.nn as nn
-from torch.nn import Parameter
-import torch.nn.functional as F
-import torch.optim as optim
 import torchvision
-from torchvision import datasets, transforms
 from torch.autograd import Variable
-from torchvision.utils import save_image
 
 import numpy as np
 import math

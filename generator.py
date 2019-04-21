@@ -4,9 +4,7 @@ import torch.optim as optim
 
 import numpy as np
 from torch.autograd import Variable
-from collections import OrderedDict
 from torch.autograd import grad
-from torch.functional import F
 
 class Generator(nn.Module):
     def __init__(self, latent_size=20):
@@ -15,7 +13,7 @@ class Generator(nn.Module):
         #initilization of variables
         self.latent_size = latent_size
 
-        self.preprosse = nn.Sequential(
+        self.preprocess = nn.Sequential(
             nn.Linear(latent_size, 500),
             nn.BatchNorm1d(500),
             nn.ReLU(True)
@@ -37,16 +35,9 @@ class Generator(nn.Module):
         self.optimizer = optim.Adam(self.parameters())
 
     def forward(self, z):
-        h = self.preprosse(z)
+        h = self.preprocess(z)
         h = h.view(-1, 500, 1, 1)
         x = self.decoder(h)
         x = x.view(-1, 3, 32, 32)
         x = self.Tanh(x)
         return x
-
-    def train_model(self,y):
-        self.optimizer.zero_grad()
-        y = -y.mean()
-        y.backward()
-        self.optimizer.step()
-        return y
