@@ -26,6 +26,13 @@ torch.manual_seed(1111)
 train_loader, valid_loader, test_loader = data.get_data_loader(directory, batch_size)
 num_epochs = 100
 
+
+if not os.path.exists(model_directory):
+    print("creating VAE directory")
+    os.mkdir(model_directory)
+    os.mkdir(model_directory + '/imgs')
+    os.mkdir(model_directory + '/models')
+
 MSE = nn.MSELoss(reduction='sum').cuda()
 
 generator = Generator(latent_size=100)
@@ -97,7 +104,7 @@ def main():
         noise = Variable(torch.randn(32, 100)).cuda()
         image = generator(noise)
         torchvision.utils.save_image(image, 'vae/'+ str(epoch) + 'image.png', nrow=8, padding=2)
-        torch.save(model.state_dict(), os.path.join(model_directory + "models/", str(epoch)+'_decoder.pt'))
+        torch.save(generator.state_dict(), os.path.join(model_directory + "models/", str(epoch)+'_decoder.pt'))
 
     plt.plot(train_loss_per_epoch, 'o-')
     plt.plot(valid_loss_per_epoch, 'o-')

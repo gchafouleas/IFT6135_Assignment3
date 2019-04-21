@@ -33,7 +33,7 @@ class Generator(nn.Module):
             nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1)
         )
 
-        self.Tanh = nn.Tanh()
+        self.Tanh = nn.Sigmoid()
         self.optimizer = optim.Adam(self.parameters())
 
     def forward(self, z):
