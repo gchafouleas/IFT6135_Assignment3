@@ -6,7 +6,9 @@ import numpy as np
 from torch.autograd import Variable
 from torch.autograd import grad
 from vae_3 import VAE
+from generator import Generator 
 import classify_svhn as data
+import matplotlib.pyplot as plt
 import argparse
 import torchvision
 import os
@@ -24,18 +26,26 @@ torch.manual_seed(1111)
 train_loader, valid_loader, test_loader = data.get_data_loader(directory, batch_size)
 num_epochs = 100
 
-binary_loss = nn.BCELoss(reduction = 'sum')
-model = VAE(channels=3, width=32, height=32, latent_variable_size=100)
+binary_loss = nn.BCELoss(reduction='sum').cuda()
+generator = Generator(width=32, height=32, channels=3, hidden_size=500, latent_size=100,
+        filters=64)
+model = VAE(width=32, height=32, channels=3, latent_size=100)
 if torch.cuda.is_available():
     model.cuda()
-optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    generator.cuda()
+optimizer_encoder = optim.Adam(model.parameters(), lr=1e-4)
+optimizer_generator = optim.Adam(generator.parameters(), lr=1e-4)
 
 def vae_loss(decode_x, x, mu, logvar):
-    loss = binary_loss(decode_x, x)
-    KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
-    KLD = torch.sum(KLD_element).mul_(-0.5)
+    decode_x = decode_x.view(decode_x.size(0), -1)
+    x = x.view(x.size(0), -1)
+    BCE = -torch.sum(x*torch.log(torch.clamp(decode_x, min=1e-10))+
+        (1-x)*torch.log(torch.clamp(1-decode_x, min=1e-10)), 1)
+    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1)
+        # Normalise by same number of elements as in reconstruction
+    loss = torch.mean(BCE + KLD)
 
-    return loss + KLD
+    return loss
 
 def train_model():
     model.train()
@@ -45,13 +55,16 @@ def train_model():
         real_data = Variable(real_data)
         if torch.cuda.is_available():
             real_data = real_data.cuda()
-        optimizer.zero_grad()
-        decode_x, mu, logvar = model(real_data)
+        optimizer_generator.zero_grad()
+        optimizer_encoder.zero_grad()
+        z, mu, logvar = model(real_data)
+        decode_x = generator(z)
         loss = vae_loss(decode_x, real_data, mu, logvar)
         loss.backward()
         train_loss.append(loss.item())
-        optimizer.step()
-    return np.mean(train_loss)
+        optimizer_encoder.step()
+        optimizer_generator.step()
+    return np.mean(train_loss), mu, logvar
 
 def valid_model(epoch):
     model.eval()
@@ -61,16 +74,20 @@ def valid_model(epoch):
         real_data = Variable(real_data)
         if torch.cuda.is_available():
             real_data = real_data.cuda()
-        decode_x, mu, logvar = model(real_data)
+        z, mu, logvar = model(real_data)
+        decode_x = generator(z)
         loss = vae_loss(decode_x, real_data, mu, logvar)
         valid_loss.append(loss.item())
-        #torchvision.utils.save_image(real_data.data, 'vae/imgs/Epoch_{}_data.jpg'.format(epoch), nrow=8, padding=2)
-        torchvision.utils.save_image(decode_x.data, 'vae/imgs/Epoch_{}_recon.jpg'.format(epoch), nrow=8, padding=2)
 
 def main():
     for epoch in range(num_epochs):
         print("epoch : ", epoch)
-        train_epoch_loss = train_model()
+        train_epoch_loss, mu, logvar = train_model()
+
+        noise = Variable(torch.randn(32, 100)).cuda()
+        image = generator(noise)
+        torchvision.utils.save_image(image, 'vae/'+ str(epoch) + 'image.png', nrow=8, padding=2)
+
         valid_epoch_loss = valid_model(epoch)
         print("train ",train_epoch_loss)
         torch.save(model.state_dict(), os.path.join(model_directory + "models/", str(epoch)+'_decoder.pt'))
