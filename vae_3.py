@@ -21,13 +21,13 @@ class VAE(nn.Module):
             nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(True),
-            nn.Conv2d(64, 2*64, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(2*64),
+            nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(128),
             nn.ReLU(True),
-            nn.Conv2d(2*64, 4*64, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(4*64),
+            nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(256),
             nn.ReLU(True),
-            nn.Conv2d(4*64, 500, kernel_size=4),
+            nn.Conv2d(256, 500, kernel_size=4),
             nn.BatchNorm2d(500),
             nn.ReLU(True)
         )
@@ -36,12 +36,9 @@ class VAE(nn.Module):
         self.log_sigma = nn.Linear(500, latent_size)
 
     def reparameterize(self, mu, logvar):
-        if self.training:
-          std = logvar.mul(0.5).exp_()
-          eps = Variable(std.data.new(std.size()).normal_())
-          return eps.mul(std).add_(mu)
-        else:
-          return mu
+        std = logvar.mul(0.5).exp_()
+        eps = Variable(std.data.new(std.size()).normal_())
+        return eps.mul(std).add_(mu)
 
     def forward(self, x):
         h = self.encoder(x)

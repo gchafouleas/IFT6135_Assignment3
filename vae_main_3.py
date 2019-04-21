@@ -47,6 +47,7 @@ def vae_loss(decode_x, x, mu, logvar):
 
 def train_model():
     model.train()
+    generator.train()
     train_loss = []
     for i, data in enumerate(train_loader):
         real_data, targets = data
@@ -66,6 +67,7 @@ def train_model():
 
 def valid_model(epoch):
     model.eval()
+    generator.eval()
     valid_loss = []
     for i, data in enumerate(valid_loader):
         real_data, targets = data
@@ -75,21 +77,36 @@ def valid_model(epoch):
         z, mu, logvar = model(real_data)
         decode_x = generator(z)
         loss = vae_loss(decode_x, real_data, mu, logvar)
+        torchvision.utils.save_image(real_data.data, 'vae/imgs/'+ str(epoch) + '_real_image.png', nrow=8, padding=2)
+        torchvision.utils.save_image(decode_x, 'vae/imgs/'+ str(epoch) + '_decoded_image.png', nrow=8, padding=2)
         valid_loss.append(loss.item())
+
+    return np.mean(valid_loss)
 
 def main():
     for epoch in range(num_epochs):
         print("epoch : ", epoch)
+        train_loss_per_epoch = []
+        valid_loss_per_epoch = []
         train_epoch_loss, mu, logvar = train_model()
-
+        train_loss_per_epoch.append(train_epoch_loss)
+        valid_epoch_loss = valid_model(epoch)
+        valid_loss_per_epoch.append(valid_epoch_loss)
+        print("train loss: ", train_epoch_loss)
+        print("valid loss: ", valid_epoch_loss)
         noise = Variable(torch.randn(32, 100)).cuda()
         image = generator(noise)
         torchvision.utils.save_image(image, 'vae/'+ str(epoch) + 'image.png', nrow=8, padding=2)
-
-        valid_epoch_loss = valid_model(epoch)
-        print("train ",train_epoch_loss)
         torch.save(model.state_dict(), os.path.join(model_directory + "models/", str(epoch)+'_decoder.pt'))
 
+    plt.plot(train_loss_per_epoch, 'o-')
+    plt.plot(valid_loss_per_epoch, 'o-')
+    plt.ylabel("loss")
+    plt.xlabel("epoch")
+    plt.title("loss vs epoch")
+    plt.legend(labels = ["train", "valid"])
+    plt.savefig(model_directory + 'loss_epoch.png', bbox_inches='tight')
+    plt.clf()
 
 if __name__=='__main__':
     main() 
