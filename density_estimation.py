@@ -20,7 +20,7 @@ import argparse
 parser = argparse.ArgumentParser(description='PyTorch model')
 parser.add_argument('--loss_type', type=str, default='JSD',
                     help='loss to use; JSD WD')
-parser.add_argument('--question', type=int, default='4',
+parser.add_argument('--question', type=int, default='3',
                     help='loss to use; 3 kor 4')
 
 
