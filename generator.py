@@ -36,7 +36,7 @@ class Generator(nn.Module):
 
     def forward(self, z):
         h = self.preprocess(z)
-        h = h.view(-1, 500, 1, 1)
+        h = h[:,:,None,None]
         x = self.decoder(h)
         x = x.view(-1, 3, 32, 32)
         x = self.Tanh(x)
