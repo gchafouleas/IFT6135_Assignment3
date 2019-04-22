@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:lgpu:4
 #SBATCH --exclusive
 #SBATCH --mem=4000MB
-#SBATCH --time=0-03:00
+#SBATCH --time=0-02:00
 #SBATCH --account=def-jiayuan
 
 module load python/3.6

@@ -5,6 +5,7 @@ from torch import nn
 from torch import autograd
 from torch import optim
 import classify_svhn
+from generator import Generator
 
 NOISE_DIM = 100
 CONVT_SIZE = 128
@@ -13,49 +14,15 @@ DISC_ITERS = 5
 BATCH_SIZE = 64
 NUM_EPOCHS = 100
 
-class Generator(nn.Module):
-    def __init__(self):
-        super(Generator, self).__init__()
-        gen_in = nn.Sequential(
-            nn.Linear(NOISE_DIM, 64 * CONVT_SIZE),
-            nn.ReLU(True),
-        )
-
-        h1 = nn.Sequential(
-            nn.ConvTranspose2d(4 * CONVT_SIZE, 2 * CONVT_SIZE, 2, stride=2),
-            nn.ReLU(True),
-        )
-        h2 = nn.Sequential(
-            nn.ConvTranspose2d(2 * CONVT_SIZE, CONVT_SIZE, 2, stride=2),
-            nn.ReLU(True),
-        )
-        gen_out = nn.ConvTranspose2d(CONVT_SIZE, 3, 2, stride=2)
-
-        self.gen_in = gen_in
-        self.h1 = h1
-        self.h2 = h2
-        self.gen_out = gen_out
-        self.tanh = nn.Tanh()
-
-    def forward(self, input):
-        out = self.gen_in(input)
-        out = out.view(-1, 4 * CONVT_SIZE, 4, 4)
-        out = self.h1(out)
-        out = self.h2(out)
-        out = self.gen_out(out)
-        out = self.tanh(out)
-        return out.view(-1, 3, 32, 32)
-
-
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
         main = nn.Sequential(
-            nn.Conv2d(3, CONVT_SIZE, 3, 2, padding=1),
+            nn.Conv2d(3, CONVT_SIZE, 3, 2, padding = 1),
             nn.LeakyReLU(),
-            nn.Conv2d(CONVT_SIZE, 2 * CONVT_SIZE, 3, 2, padding=1),
+            nn.Conv2d(CONVT_SIZE, 2 * CONVT_SIZE, 3, 2, padding = 1),
             nn.LeakyReLU(),
-            nn.Conv2d(2 * CONVT_SIZE, 4 * CONVT_SIZE, 3, 2, padding=1),
+            nn.Conv2d(2 * CONVT_SIZE, 4 * CONVT_SIZE, 3, 2, padding = 1),
             nn.LeakyReLU(),
         )
 
@@ -68,12 +35,12 @@ class Discriminator(nn.Module):
         out = self.linear(out)
         return out
 
-G = Generator()
+G = Generator(NOISE_DIM)
 D = Discriminator()
 
 # optimizers
-adam_d = optim.Adam(D.parameters())
-adam_g = optim.Adam(G.parameters())
+adam_d = optim.Adam(D.parameters(), lr=1e-4)
+adam_g = optim.Adam(G.parameters(), lr=1e-4)
 
 # set gpu flag
 use_cuda = torch.cuda.is_available()
@@ -137,9 +104,9 @@ for epoch in range(NUM_EPOCHS):
 
             if use_cuda:
                 real_data = real_data.cuda(gpu)
-            real_data_v = autograd.Variable(real_data)
+            real_data = autograd.Variable(real_data)
 
-            D_real = D(real_data_v)
+            D_real = D(real_data)
             D_real = D_real.mean()
             D_real.backward(mone)
 
@@ -147,18 +114,17 @@ for epoch in range(NUM_EPOCHS):
             noise = torch.randn(dim, NOISE_DIM)
             if use_cuda:
                 noise = noise.cuda(gpu)
-            noisev = autograd.Variable(noise)
-            fake = autograd.Variable(G(noisev).data)
-            inputv = fake
-            D_fake = D(inputv)
+            noise = autograd.Variable(noise)
+            fake = autograd.Variable(G(noise).data)
+            D_fake = D(fake)
             D_fake = D_fake.mean()
             D_fake.backward(one)
 
             # train with gradient penalty
-            gp = grad_penalty(D, real_data_v.data, fake.data)
+            gp = grad_penalty(D, real_data.data, fake.data)
             gp.backward()
 
-            D_cost = D_fake - D_real + gp
+            D_loss = D_fake - D_real + gp
             adam_d.step()
         else: # update generator
             G.zero_grad()
@@ -166,12 +132,12 @@ for epoch in range(NUM_EPOCHS):
             noise = torch.randn(BATCH_SIZE, NOISE_DIM)
             if use_cuda:
                 noise = noise.cuda(gpu)
-            noisev = autograd.Variable(noise)
-            fake = G(noisev)
+            noise = autograd.Variable(noise)
+            fake = G(noise)
             D_fake = D(fake)
             D_fake = D_fake.mean()
             D_fake.backward(mone)
-            G_cost = -D_fake
+            G_loss = -D_fake
             adam_g.step()
 
     gen_samples(epoch, G)
